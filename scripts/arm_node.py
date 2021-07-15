@@ -58,7 +58,7 @@ class arm(object):
     moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('arm_action_node', anonymous=True)
 
-
+    
     robot = moveit_commander.RobotCommander()
 
     scene = moveit_commander.PlanningSceneInterface()
@@ -80,6 +80,7 @@ class arm(object):
 
     # Misc variables
     self.box_name = ''
+    self.imu_name = "imu"
     self.robot = robot
     self.scene = scene
     self.move_group = move_group
@@ -92,12 +93,81 @@ class arm(object):
 
 
 
+  def spawn_box(self,box_name,x,y,z,r,p,yw,dx,dy,dz, timeout=4):
+
+    #box_name = self.box_name
+    scene = self.scene
+    box_pose = geometry_msgs.msg.PoseStamped()
+    box_pose.header.frame_id = "base_link"
+
+    orientation = euler_to_quaternion(r,p,yw)
+    box_pose.pose.orientation.x = orientation[0]
+    box_pose.pose.orientation.y = orientation[1]
+    box_pose.pose.orientation.z = orientation[2]
+    box_pose.pose.orientation.w = orientation[3]
+
+    box_pose.pose.position.x = x  
+    box_pose.pose.position.y = y  
+    box_pose.pose.position.z = z
+
+    scene.add_box(box_name, box_pose, size=(dx, dy, dz))
+
+    return self.wait_for_state_update(box_name,box_is_known=True, timeout=timeout)
 
 
+  def spawn_imu(self,x,y,z,yw):
+      dx, dy, dz = 0.05, 0.165, 0.05
+      r,p = 0, 0
+      return self.spawn_box(self.imu_name, x,y,z, r,p,yw , dx,dy,dz)
 
 
+  def spawn_lid(self):
+      print("spawning handle")
+      euler = quaternion_to_euler([0.58054,0.403645,0.40368,0.5806])
+      print(euler)
+      lid = self.spawn_box("lid", 0.35619, -.24109, 0.179, m.degrees(euler[2]), m.degrees(euler[1]), m.degrees(euler[0]), 0.0996,0.1496, 0.0006)
+      height = 0.035/2+0.003+0.179
+      lid_handle = self.spawn_box("lid_handle", 0.35619, -.24109, height, 0, 0, 0, 0.035, 0.035, 0.035)
+      #self.attach_boxes("lower_part","upper_part")
+      #self.attach_box("lid")
+      #self.attach_box("lid_handle")
 
 
+  def attach_box(self,box_name,timeout=4):
+
+    #box_name = #self.box_name
+    robot = self.robot
+    scene = self.scene
+    eef_link = self.eef_link
+    group_names = self.group_names
+
+    ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+    ## robot be able to touch them without the planning scene reporting the contact as a
+    ## collision. By adding link names to the ``touch_links`` array, we are telling the
+    ## planning scene to ignore collisions between those links and the box. For the Panda
+    ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+    ## you should change this value to the name of your end effector group name.
+    grasping_group = "gripper"
+    touch_links = robot.get_link_names(group=grasping_group)
+    scene.attach_box(eef_link, box_name, touch_links=touch_links)
+
+  def attach_boxes(self, box1_name, box2_name,timeout=4):
+
+    #box_name = self.box_name
+    robot = self.robot
+    scene = self.scene
+    #eef_link = self.eef_link
+    #group_names = self.group_names
+
+    ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+    ## robot be able to touch them without the planning scene reporting the contact as a
+    ## collision. By adding link names to the ``touch_links`` array, we are telling the
+    ## planning scene to ignore collisions between those links and the box. For the Panda
+    ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+    ## you should change this value to the name of your end effector group name.
+    #grasping_group = "gripper"
+    touch_links = [box1_name] #robot.get_link_names(group=grasping_group) # 
+    return scene.attach_box(box1_name, box2_name, touch_links=touch_links)
 
 
   def go_to_pose_goal(self,x,y,z,r,p,yw): 
@@ -133,19 +203,19 @@ class arm(object):
     return all_close(pose_goal, current_pose, 0.0001)
 
 
-  def go_to_joint_state(self):
+  def go_to_joint_state(self,joint_state):
     "move arm to a specified joint state"
     move_group = self.move_group
 
 
     current_joints = self.move_group.get_current_joint_values()
     joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = current_joints[0]
-    joint_goal[1] = current_joints[1]
-    joint_goal[2] = current_joints[2]
-    joint_goal[3] = current_joints[3]
-    joint_goal[4] = current_joints[4]
-    joint_goal[5] = current_joints[5]
+    joint_goal[0] = joint_state[0] #current_joints[0]
+    joint_goal[1] = joint_state[1] #current_joints[1]
+    joint_goal[2] = joint_state[2] #current_joints[2]
+    joint_goal[3] = joint_state[3] #current_joints[3]
+    joint_goal[4] = joint_state[4] #current_joints[4]
+    joint_goal[5] = joint_state[5] #current_joints[5]
 
 
      # go!
@@ -389,12 +459,13 @@ class arm(object):
     move_group.execute(plan, wait=True)
 
 
+  
 
-  def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
+  def wait_for_state_update(self, box_name,box_is_known=False, box_is_attached=False, timeout=4):
     # Copy class variables to local variables to make the web tutorials more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
-    box_name = self.box_name
+    #box_name = box_name#self.box_name
     scene = self.scene
 
     ## BEGIN_SUB_TUTORIAL wait_for_scene_update
@@ -431,16 +502,89 @@ class arm(object):
     return False
 
 
+  def scan_task2(self):
+    rospy.loginfo("Starting imu section scanning")
+    scan_pose = [0.153/2,0.75/2-0.02-0.2/2,0.3,0,90,0]   #  [0.0153/2+0.020/2,0.075/2-0.02-0.020/2,0.2,0,90,0]
+    self.move_group.allow_replanning(True)
+    plan_time = 5
+    self.move_group.set_planning_time(plan_time)
+    #rospy.loginfo("Planning time set to ", str(plan_time))
 
+    planner_1 = "RRTstarkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    #rospy.loginfo("Planner set to ",planner_1)
+    plan_attempts = 20
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    #rospy.loginfo("Planning attempts set to ", str(plan_attempts))
+    print("Starting scan ..")
+    self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1]-0.2/2, scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(scan_pose[0]+0.2, scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1]+0.2/2, scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+   # self.go_to_pose_goal(scan_pose[0], scan_pose[1]-0.2/2, scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
 
+  def scan_task1(self):
+    rospy.loginfo("Starting imu section scanning")
+    scan_pose = [-0.14,0,0.4,90,0,0]   #  [0.0153/2+0.020/2,0.075/2-0.02-0.020/2,0.2,0,90,0]
+    self.move_group.allow_replanning(True)
+    plan_time = 7
+    self.move_group.set_planning_time(plan_time)
+    #rospy.loginfo("Planning time set to ", str(plan_time))
 
+    planner_1 = "RRTstarkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    #rospy.loginfo("Planner set to ",planner_1)
+    plan_attempts = 7
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    #rospy.loginfo("Planning attempts set to ", str(plan_attempts))
+    print("Starting scan ..")
+    self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, 0.01,0.38, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, -0.01,0.38, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, 0.01, 0.30, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, -0.01, 0.30, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, 0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, -0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    # self.go_to_pose_goal(scan_pose[0], scan_pose[1]+0.2/2, scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    # rospy.sleep(4)
+    # self.go_to_pose_goal(scan_pose[0], scan_pose[1]-0.2/2, scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
 
 def main():
   try:
     print ("....... Press `Enter` to begin the machine by setting up the moveit_commander ..,...")
     raw_input()
     ur3_arm = arm()
-    ur3_arm.keyboard_teleop()
+    #print("============ Press `Enter` to add a box In the location of the IMU module ...")
+    #raw_input()
+    #spawn_location = [0.12,.26,-.08]
+    #spawn_yaw_angle = 30
+    #ur3_arm.spawn_imu(spawn_location[0],spawn_location[1],spawn_location[2],spawn_yaw_angle)
+    #print("============ Press `Enter` to add a spawn handle In the location of the handle module ...")
+    #raw_input()
+    #res = ur3_arm.spawn_lid()
+    #print(res)
+    #ur3_arm.keyboard_teleop()
+    #    box_pose.pose.position.x = x#0.120  
+    #box_pose.pose.position.y = y#0.260  
+    #box_pose.pose.position.z = z#-0.08
+    print("============ Press `Enter` to to move to IMU module scan location ...")
+    raw_input()
+    ur3_arm.scan_task2()
     #print("..... Pose goal demo .....")
     #ur3_arm.go_to_pose_goal(0.3, 0.1, 0.3, 0, 0, 0)
     
