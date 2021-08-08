@@ -33,6 +33,19 @@ if __name__ == '__main__':
         ur3_arm = arm()
         print("Going to start state")
         ur3_arm.go_to_joint_state(ur3_arm.start_state)
+
+
+        # load poses from markers_precise.csv
+        f = open('markers_precise.csv',"r+")
+        reader = csv.reader(f,delimiter=' ')
+        for row in reader:
+            print(row)
+            ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+            ur3_arm.marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+
+
+	ur3_arm.initialize_environment()
+
         print ("Starting to scan imu location")
         ur3_arm.t2_scan_imu_module_location()
         ur3_arm.go_to_imu_goal()

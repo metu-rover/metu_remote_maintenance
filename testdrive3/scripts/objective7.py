@@ -53,8 +53,9 @@ if __name__ == '__main__':
         for row in reader:
             print(row)
             ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+            ur3_arm.marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
 
-
+	ur3_arm.initialize_environment()
 
         ur3_arm.t1_press_button(ur3_arm.button_id)
         rospy.sleep(1)

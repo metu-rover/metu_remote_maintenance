@@ -49,7 +49,11 @@ if __name__ == '__main__':
         for row in reader:
             print(row)
             ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+            ur3_arm.marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
 
+
+
+	ur3_arm.initialize_environment()
 
         rospy.loginfo("Writing id to obj6id.csv")
         f = open("obj6id.csv", 'a')
