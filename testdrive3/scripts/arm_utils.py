@@ -458,7 +458,7 @@ class arm(object):
   def t2_spawn_imu(self):
       #simulation
       #dx, dy, dz = 0.05, 0.165, 0.05
-      test drive
+      #test drive
       dx, dy, dz = 0.045, 0.165, 0.05
 
       imu_marker_pose = self.marker_poses[10]
