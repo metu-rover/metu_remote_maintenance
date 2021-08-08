@@ -1,0 +1,5 @@
+<launch> 
+  <include file="$(find aruco_detect)/launch/aruco_detect_remote_05.launch"/>
+  <node pkg="testdrive3" name="objective2" type="objective2.py" output="screen" cwd="node"/> 
+  <param name="buttons" type="str" value="1 2 3 4" />
+</launch>
