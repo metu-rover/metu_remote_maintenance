@@ -17,7 +17,6 @@ import trajectory_msgs.msg as tjmsg
 import control_msgs.msg
 import actionlib
 
-#from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
 # Aruco related dependencies
 import roslib
@@ -26,6 +25,8 @@ import tf2_ros
 from arm_utils import *
 
 
+import csv
+
 
 if __name__ == '__main__':
     try:
@@ -33,20 +34,32 @@ if __name__ == '__main__':
         ur3_arm = arm()
         print("Going to start state")
         ur3_arm.go_to_joint_state(ur3_arm.start_state)
-        print ("Starting to scan imu location")
-        ur3_arm.t2_scan_imu_module_location()
-        ur3_arm.go_to_imu_goal()
-        rospy.sleep(1)
-        ur3_arm.approach_imu() # added simulation and test drive parts
-        rospy.sleep(1)
-        ur3_arm.t2_spawn_imu() # added simulation and test drive parts
-        rospy.sleep(1)
-        ur3_arm.grab_imu()
-        rospy.sleep(1)
-        ur3_arm.t2_go_to_joint_state()
+
+        print ("Pushing the button described by the marker shown in the inspection window")
+
+	print("Loading button id")
+        f = open('obj6id.csv',"r+")
+        reader = csv.reader(f,delimiter=' ')
+        for row in reader:
+            print(row)
+            ur3_arm.button_id = int(row[0])
+            ur3_arm.button[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+
+
+
+        rospy.loginfo("Loading panel button ids")
+        f1 = open('markers_precise.csv',"r+")
+        reader = csv.reader(f1,delimiter=' ')
+        for row in reader:
+            print(row)
+            ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+
+
+
+        ur3_arm.t1_press_button(ur3_arm.button_id)
         rospy.sleep(1)
 
-        print ("============ Objective 3 completed!")
+        print ("============ Objective7 completed!")
         rospy.sleep(0.01)
 
     except KeyboardInterrupt:

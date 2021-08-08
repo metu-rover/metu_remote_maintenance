@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import copy
 from moveit_commander.planning_scene_interface import PlanningSceneInterface
@@ -17,7 +16,6 @@ import trajectory_msgs.msg as tjmsg
 import control_msgs.msg
 import actionlib
 
-#from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
 # Aruco related dependencies
 import roslib
@@ -27,26 +25,33 @@ from arm_utils import *
 
 
 
+
+
 if __name__ == '__main__':
     try:
         print ("Starting moveit_commander")
         ur3_arm = arm()
         print("Going to start state")
         ur3_arm.go_to_joint_state(ur3_arm.start_state)
-        print ("Starting to scan imu location")
-        ur3_arm.t2_scan_imu_module_location()
-        ur3_arm.go_to_imu_goal()
+
+        f = open('ids.csv',"r+")
+        reader = csv.reader(f,delimiter=' ')
+        for row in reader:
+            print(row)
+            ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+
+        print ("Closing the inspection window")
+        ur3_arm.move_to_area()
         rospy.sleep(1)
-        ur3_arm.approach_imu() # added simulation and test drive parts
+        ur3_arm.t3_grab_cover()
         rospy.sleep(1)
-        ur3_arm.t2_spawn_imu() # added simulation and test drive parts
+        ur3_arm.t3_move_back_to_cover()
         rospy.sleep(1)
-        ur3_arm.grab_imu()
-        rospy.sleep(1)
-        ur3_arm.t2_go_to_joint_state()
+        ur3_arm.t3_detach_cover()
         rospy.sleep(1)
 
-        print ("============ Objective 3 completed!")
+
+        print ("============ Objective8 completed!")
         rospy.sleep(0.01)
 
     except KeyboardInterrupt:

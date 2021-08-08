@@ -49,7 +49,6 @@ if __name__ == '__main__':
         f1 = open("markers.csv", 'a')
         f1 =  open("markers.csv", 'w+')
         writer = csv.writer(f1,delimiter=' ')
-        writer.writerow([0,0,0,0])
         for marker_id in ur3_arm.marker_poses:
             marker_tf = ur3_arm.marker_poses[marker_id] 
             x = truncate(marker_tf.transform.translation.x,3)
@@ -62,7 +61,6 @@ if __name__ == '__main__':
         f2 = open("markers_precise.csv", 'a')
         f2 =  open("markers_precise.csv", 'w+')
         writer = csv.writer(f2,delimiter=' ')
-        writer.writerow([0,0,0,0])
         for marker_id in ur3_arm.marker_poses:
             marker_tf = ur3_arm.marker_poses[marker_id] 
             x = marker_tf.transform.translation.x

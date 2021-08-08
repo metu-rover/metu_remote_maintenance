@@ -1,0 +1,5 @@
+<launch>
+    <include file="$(find aruco_detect)/launch/aruco_detect_remote_05.launch"/>
+   <node pkg="testdrive3" name="objective6" type="objective6.py" output="screen" cwd="node"/> 
+
+</launch>
