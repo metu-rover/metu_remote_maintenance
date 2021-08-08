@@ -137,9 +137,9 @@ class arm(object):
 
       button_pose = self.loaded_marker_poses[5]
       pose_x = button_pose[0]
-      middle_panel = self.spawn_box("middle_panel",pose_x + 0.01 , button_pose[1], -0.05, 0, 0, 0, 0.02, 0.3, 0.65)
-      left_panel = self.spawn_box("left_panel",pose_x - 0.04 , button_pose[1] + 0.3, -0.05, 0, 0, 18, 0.02, 0.3, 0.65)
-      right_panel = self.spawn_box("right_panel",pose_x - 0.04 , button_pose[1] - 0.3, -0.05, 0, 0,-18, 0.02, 0.3, 0.35)
+      middle_panel = self.spawn_box("middle_panel",pose_x + 0.01 , button_pose[1]	, 0.2, 0, 0, 0, 0.02, 0.3, 0.65)
+      left_panel = self.spawn_box("left_panel",pose_x - 0.04 , button_pose[1] + 0.3, 0.2, 0, 0, 18, 0.02, 0.3, 0.65)
+      right_panel = self.spawn_box("right_panel",pose_x - 0.04 , button_pose[1] - 0.3, 0, 0, 0,-18, 0.02, 0.3, 0.35)
       stand = self.spawn_box("stand",0 , 0, -0.05, 0, 0, 0, 0.15, 0.15, 0.1)
       middle_panel = self.spawn_box("connector",pose_x/2 + 0.04 , button_pose[1], -0.05, 0, 0, 0, pose_x/2 + 0.02, 0.15, 0.1)
 
