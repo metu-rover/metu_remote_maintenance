@@ -55,9 +55,7 @@ if __name__ == '__main__':
         f = open("obj6id.csv", 'a')
         f =  open("obj6id.csv", 'w+')
         writer = csv.writer(f,delimiter=' ')
-        for marker_id in ur3_arm.button:
-	    print(marker_id)
-            
+        for marker_id in ur3_arm.button:  
             if marker_id < 10:
                 marker_tf = ur3_arm.button[marker_id] 
                 x = marker_tf.transform.translation.x
