@@ -38,6 +38,7 @@ def truncate(f, n):
 
 if __name__ == '__main__':
     try:
+        f1 = open("markers.csv", 'a')
         print ("Starting moveit_commander")
         ur3_arm = arm()
         ur3_arm.go_to_joint_state(ur3_arm.start_state)
@@ -70,7 +71,7 @@ if __name__ == '__main__':
             print([marker_id,x,y,z])
             writer.writerow([marker_id,x,y,z])
         
-        print ("============ Python tutorial demo complete!")
+        print ("============ Objective 1 Completed !")
         rospy.sleep(0.01)
 
     except KeyboardInterrupt:

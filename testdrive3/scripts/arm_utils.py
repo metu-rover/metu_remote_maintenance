@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import sys
 import copy
 from moveit_commander.planning_scene_interface import PlanningSceneInterface
@@ -61,7 +62,7 @@ class arm(object):
     move_group = moveit_commander.MoveGroupCommander(group_name)
     #gripper group (do we need it ?)
     gripper_name = "gripper"
-    eef_group = moveit_commander.MoveGroupCommander(gripper_name)
+    #eef_group = moveit_commander.MoveGroupCommander(gripper_name) #commented it (for td3)
 
     display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                    moveit_msgs.msg.DisplayTrajectory,
@@ -74,7 +75,7 @@ class arm(object):
     self.robot = robot
     self.scene = scene
     self.move_group = move_group
-    self.eef_group = eef_group
+    #self.eef_group = eef_group
     self.display_trajectory_publisher = display_trajectory_publisher
     self.planning_frame = move_group.get_planning_frame()
     self.eef_link = move_group.get_end_effector_link()

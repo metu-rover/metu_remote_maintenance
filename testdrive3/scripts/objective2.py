@@ -63,7 +63,7 @@ if __name__ == '__main__':
         ur3_arm.t1_press_button(int(button4_id))
 
 
-        print ("============ Python tutorial demo complete!")
+        print ("============ Objective 2 Completed!")
         rospy.sleep(0.01)
 
     except KeyboardInterrupt:

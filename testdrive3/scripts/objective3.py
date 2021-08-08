@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import sys
 import copy
 from moveit_commander.planning_scene_interface import PlanningSceneInterface
@@ -45,7 +46,7 @@ if __name__ == '__main__':
         ur3_arm.t2_go_to_joint_state()
         rospy.sleep(1)
 
-        print ("============ Objective3 completed!")
+        print ("============ Objective 3 completed!")
         rospy.sleep(0.01)
 
     except KeyboardInterrupt:

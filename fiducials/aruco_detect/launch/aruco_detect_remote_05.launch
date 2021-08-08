@@ -1,9 +1,9 @@
 <!-- Run the aruco_detect node -->
 <launch>
   <!-- namespace for camera input -->
-  <arg name="camera" default="camera_image/color"/>
+  <arg name="camera" default="usb_cam"/>
   <arg name="image" default="image_raw"/>
-  <arg name="transport" default="compressed"/>
+  <arg name="transport" default="raw"/>
   <arg name="fiducial_len" default="0.05"/> <!-- it sets the appropriate distance -->
   <arg name="dictionary" default="16"/>
   <arg name="do_pose_estimation" default="true"/>
