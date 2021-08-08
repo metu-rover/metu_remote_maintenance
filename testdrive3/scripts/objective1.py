@@ -45,6 +45,8 @@ if __name__ == '__main__':
         print ("Scanning middle panel")
         ur3_arm.t1_scan_middle_panel()
         print("Writing recorded aruco poses to markers.csv")
+	
+		
 
         f1 = open("markers.csv", 'a')
         f1 =  open("markers.csv", 'w+')

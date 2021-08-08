@@ -38,12 +38,20 @@ if __name__ == '__main__':
         button3_id = button_list[4]
         button4_id = button_list[6]
 
+
+
+	ur3_arm.initialize_environment()
+
         # load poses from markers_precise.csv
         f = open('markers_precise.csv',"r+")
         reader = csv.reader(f,delimiter=' ')
         for row in reader:
             print(row)
             ur3_arm.loaded_marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+            ur3_arm.marker_poses[int(row[0])] = [float(row[1]),float(row[2]),float(row[3])] # ADDDDDED
+
+
+	ur3_arm.initialize_environment()
 
         print ("Pressing 4 buttons", button_list)
 
