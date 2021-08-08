@@ -63,7 +63,7 @@ class arm(object):
     group_name = "manipulator"
     move_group = moveit_commander.MoveGroupCommander(group_name)
     #gripper group (do we need it ?)
-    gripper_name = "gripper"
+    gripper_name = "endeffector"
     #eef_group = moveit_commander.MoveGroupCommander(gripper_name) #commented it (for td3)
 
     display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
@@ -202,7 +202,7 @@ class arm(object):
     eef_link = self.eef_link
     group_names = self.group_names
 
-    grasping_group = "gripper"
+    grasping_group = "endeffector"
     touch_links = robot.get_link_names(group=grasping_group)
     scene.attach_box(eef_link, box_name, touch_links=touch_links)
 
