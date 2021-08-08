@@ -24,7 +24,7 @@ import tf2_ros
 
 from arm_utils import *
 
-
+import csv
 
 
 

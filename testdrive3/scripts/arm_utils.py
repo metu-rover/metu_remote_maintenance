@@ -22,6 +22,8 @@ import roslib
 import tf2_ros
 
 
+import csv
+import math as m
 def all_close(goal, actual, tolerance):
   """
   Convenience method for testing if a list of values are within a tolerance of their counterparts in another list
@@ -89,6 +91,12 @@ class arm(object):
     self.marker_poses = {}
     self.detected_markers = []
     self.loaded_marker_poses = {} #ADDDDED
+
+    # button what ?
+    self.button = {}
+    self.button_id = ''
+    self.loaded_button_id = ''
+
     # button feedback
     self.button_1 = False
     self.button_2 = False
@@ -109,6 +117,12 @@ class arm(object):
     # self.button_8_sub = rospy.Subscriber("/button_8", Bool,self.button_8_fb)
     # self.button_9_sub = rospy.Subscriber("/button_9", Bool,self.button_9_fb)
 
+
+
+  def check_all_close(self,val1,val2,tolerance):
+      return m.sqrt(   m.pow(val1[0]-val2[0],2)  +  m.pow(val1[1]-val2[1],2)  + m.pow(val1[2]-val2[2],2)) < tolerance
+
+
   def euler_to_quaternion(self,r,p,yw): 
         quaternion = tf.transformations.quaternion_from_euler(m.radians(r), m.radians(p), m.radians(yw))
         return quaternion
@@ -119,12 +133,21 @@ class arm(object):
         return [r,p,yw]
 
 
+  def initialize_environment(self):
+
+      button_pose = self.marker_poses[5]
+      pose_x = button_pose.transform.translation.x
+      middle_panel = self.spawn_box("middle_panel",pose_x + 0.01 , button_pose.transform.translation.y, -0.05, 0, 0, 0, 0.02, 0.3, 0.65)
+      left_panel = self.spawn_box("left_panel",pose_x - 0.04 , button_pose.transform.translation.y + 0.3, -0.05, 0, 0, 18, 0.02, 0.3, 0.65)
+      right_panel = self.spawn_box("right_panel",pose_x - 0.04 , button_pose.transform.translation.y - 0.3, -0.05, 0, 0,-18, 0.02, 0.3, 0.35)
+      stand = self.spawn_box("stand",0 , 0, -0.05, 0, 0, 0, 0.15, 0.15, 0.1)
+      middle_panel = self.spawn_box("connector",pose_x/2 + 0.04 , button_pose.transform.translation.y, -0.05, 0, 0, 0, pose_x/2 + 0.02, 0.15, 0.1)
 
 
 
   def spawn_box(self,box_name,x,y,z,r,p,yw,dx,dy,dz, timeout=4):
 
-    scene = self.scene
+    scene = self.scene  
     box_pose = geometry_msgs.msg.PoseStamped()
     box_pose.header.frame_id = "base_link"
 
@@ -144,23 +167,10 @@ class arm(object):
 
 
   def wait_for_state_update(self, box_name,box_is_known=False, box_is_attached=False, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
+
     #box_name = box_name#self.box_name
     scene = self.scene
 
-    ## BEGIN_SUB_TUTORIAL wait_for_scene_update
-    ##
-    ## Ensuring Collision Updates Are Receieved
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ## If the Python node dies before publishing a collision object update message, the message
-    ## could get lost and the box will not appear. To ensure that the updates are
-    ## made, we wait until we see the changes reflected in the
-    ## ``get_attached_objects()`` and ``get_known_object_names()`` lists.
-    ## For the purpose of this tutorial, we call this function after adding,
-    ## removing, attaching or detaching an object in the planning scene. We then wait
-    ## until the updates have been made or ``timeout`` seconds have passed
     start = rospy.get_time()
     seconds = rospy.get_time()
     while (seconds - start < timeout) and not rospy.is_shutdown():
@@ -192,12 +202,6 @@ class arm(object):
     eef_link = self.eef_link
     group_names = self.group_names
 
-    ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
-    ## robot be able to touch them without the planning scene reporting the contact as a
-    ## collision. By adding link names to the ``touch_links`` array, we are telling the
-    ## planning scene to ignore collisions between those links and the box. For the Panda
-    ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
-    ## you should change this value to the name of your end effector group name.
     grasping_group = "gripper"
     touch_links = robot.get_link_names(group=grasping_group)
     scene.attach_box(eef_link, box_name, touch_links=touch_links)
@@ -219,6 +223,10 @@ class arm(object):
     scene.remove_world_object(box_name)
 
     return self.wait_for_state_update(box_name,box_is_attached=False, box_is_known=False, timeout=timeout)
+
+
+
+
 
 # ARUCO MARKER specific functions
   def get_marker_pose(self,marker_id):
@@ -267,7 +275,6 @@ class arm(object):
 # TASK 1 specific functions
   def t1_scan_middle_panel(self):
     rospy.loginfo("Objective 1: Scanning the middle panel to localize components/buttons")
-   # scan_pose = [-0.14,0,0.4,90,0,0]   #  [0.0153/2+0.020/2,0.075/2-0.02-0.020/2,0.2,0,90,0]
 
     self.move_group.allow_replanning(True)
 
@@ -286,15 +293,11 @@ class arm(object):
 
     rospy.loginfo("Starting to scan the panel ...")
 
-    #self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
-    #rospy.sleep(2)
-
     self.t1_extract_aruco_poses()
     rospy.sleep(2)
 
-    #self.go_to_pose_goal(0.22, 0.01,0.38, scan_pose[3], scan_pose[4], scan_pose[5])
-    #self.t1_extract_aruco_poses()
 
+    rospy.loginfo("First pass")
     self.move_cartesian(0.05, -.05, 0)
     rospy.sleep(2)
     self.t1_extract_aruco_poses()
@@ -313,6 +316,7 @@ class arm(object):
 
 
 
+    rospy.loginfo("Second pass")
 
     self.move_cartesian(0, 0, -0.08)
     rospy.sleep(2)
@@ -333,6 +337,7 @@ class arm(object):
 
 
 
+    rospy.loginfo("Third pass")
 
 
     self.move_cartesian(0., -.05, 0)
@@ -352,41 +357,6 @@ class arm(object):
 
 
 
-
-    # self.move_cartesian(0, 0.05, -0.08)
-
-
-    # #self.go_to_pose_goal(0.22, 0.01, 0.30, scan_pose[3], scan_pose[4], scan_pose[5])
-
-    # rospy.sleep(2)
-    # self.t1_extract_aruco_poses()
-    # self.move_cartesian(0, -0.05, 0)
-
-    # #self.go_to_pose_goal(0.22, -0.01, 0.30, scan_pose[3], scCPUsan_pose[4], scan_pose[5])
-
-    # rospy.sleep(2)
-    # self.t1_extract_aruco_poses()
-    # self.move_cartesian(0, 0.03, -0.08)
-
-    # #self.go_to_pose_goal(0.22, 0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
-
-    # rospy.sleep(2)
-    # self.t1_extract_aruco_poses()
-    # self.move_cartesian(0, -0.03, 0)
-
-    # #self.go_to_pose_goal(0.22, -0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
-
-    # rospy.sleep(2)
-    # self.t1_extract_aruco_poses()
-    
-    # print(self.marker_poses)
-    # self.t1_push_button(1)
-    # rospy.sleep(1)
-    # self.t1_push_button(2)
-    # rospy.sleep(1)
-    # self.t1_push_button(3)
-    # rospy.sleep(1)
-    # self.t1_push_button(9)
 
   def t1_extract_aruco_poses(self):
         rospy.loginfo("extracting detected aruco marker poses ...")
@@ -409,6 +379,8 @@ class arm(object):
 
         approach_pose = geometry_msgs.msg.Pose()
         approach_pose.position.x = marker_pose[0] - 0.200
+
+
         approach_pose.position.y = marker_pose[1]
         print("Y GOAL", approach_pose.position.y )
         approach_pose.position.z = marker_pose[2] -0.05500 #- 0.01
@@ -422,18 +394,21 @@ class arm(object):
 
         self.move_cartesian(dx, dy, dz)
         rospy.sleep(0.5)
-        # print(approach_pose.position.x)
-        # print(approach_pose.position.y)
-        # print(approach_pose.position.z)
-        # print("DX ",dx)
-        # print("DY ",dy)
-        # print("DZ ",dz)
+
+
+
+
+        #simulation
         self.move_cartesian(0.06, 0, 0)
         rospy.sleep(0.5)
         self.move_cartesian(-0.06, 0, 0)
         rospy.sleep(0.5)
 
-        #self.go_to_pose_goal(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z, 0, 0, 0)
+        #test drive
+        # self.move_cartesian(0.09, 0, 0)
+        # rospy.sleep(0.5)
+        # self.move_cartesian(-0.09, 0, 0)
+        # rospy.sleep(0.5)
 
 
 
@@ -480,7 +455,11 @@ class arm(object):
 
 # TASK 2 specific functions
   def t2_spawn_imu(self):
+      #simulation
       dx, dy, dz = 0.05, 0.165, 0.05
+      #test drive
+      #dx, dy, dz = 0.045, 0.165, 0.05
+
       imu_marker_pose = self.marker_poses[10]
     
       scene = self.scene
@@ -540,22 +519,7 @@ class arm(object):
     self.t2_extract_aruco_poses()
     self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3]-90, scan_pose[4]+90, scan_pose[5])
     rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
-    #self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1], scan_pose[2], scan_pose[3] - 20 , scan_pose[4] - 25, scan_pose[5] + 10)
-    #rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
-    #self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1]-0.2/2, scan_pose[2], scan_pose[3] + 15 , scan_pose[4] + 10 , scan_pose[5] + 15)
-    #rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
-    #self.go_to_pose_goal(scan_pose[0]+0.2, scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
-    #rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
-    #self.go_to_pose_goal(scan_pose[0]+0.2/2, scan_pose[1]+0.2/2, scan_pose[2], scan_pose[3] - 25 , scan_pose[4] - 25 , scan_pose[5] - 15 )
-    #rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
-    #self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
-    #rospy.sleep(2)
-    #self.t2_extract_aruco_poses()
+
     print(self.marker_poses)
 
 
@@ -718,7 +682,7 @@ class arm(object):
     pose_goal.position.y = marker_pose.transform.translation.y - 0.12
     pose_goal.position.z = marker_pose.transform.translation.z - 0.1
 
-    r = 25
+    r = rospy.get_param("/angle")
     r = -r
 
     quaternion = self.euler_to_quaternion(r, 0, 18)
@@ -751,30 +715,367 @@ class arm(object):
 
             
 # TASK 3 specific functions
-  def t3_spawn_cover(self):
-      print("spawning handle")
-      euler = self.quaternion_to_euler([0.58054,0.403645,0.40368,0.5806])
-      print(euler)
-      lid = self.spawn_box("lid", 0.35619, -.24109, 0.179, m.degrees(euler[2]), m.degrees(euler[1]), m.degrees(euler[0]), 0.0996,0.1496, 0.0006)
-      height = 0.035/2+0.003+0.179
-      lid_handle = self.spawn_box("lid_handle", 0.35619, -.24109, height, 0, 0, 0, 0.035, 0.035, 0.035)
+  def t3_detect_inspection_panel(self):
+    rospy.loginfo("Objective 5 - part 1: scanning right panel to localize inspection panel")
+    scan_pose = [0.2,-0.15,0.15,90,0,0]   
 
+    self.move_group.allow_replanning(True)
+
+    planning_time = 0.5
+    self.move_group.set_planning_time(planning_time)
+    rospy.loginfo("Planning time set to %s", planning_time)
+
+    planner_1 = "RRTstarkConfigDefault"
+    planner_2 = "RRTkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    rospy.loginfo("Planner set to %s",planner_1)
+
+    plan_attempts = 5
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    rospy.loginfo("Planning attempts set to %s", plan_attempts)
+
+    rospy.loginfo("Starting to scan the panel ...")
+    self.go_to_pose_goal(0.15, -0.2, 0.15, scan_pose[3], scan_pose[4], scan_pose[5]-18)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(-0.03, -0.05, -0.02)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(0.03, 0.05, 0)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.go_to_pose_goal(0.17, -0.17, 0.2, scan_pose[3], scan_pose[4]+25, scan_pose[5]-18)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.go_to_pose_goal(0.22, -0.19, 0.22, scan_pose[3], scan_pose[4], scan_pose[5]-18)
+    rospy.sleep(2)
+    self.move_cartesian(0, -0.03, 0.25)
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.15, -0.3, 0.35, scan_pose[3], scan_pose[4]+90, scan_pose[5]-18)
+    #rospy.sleep(2)
+    #self.t3_extract_aruco_poses()
+    print(self.marker_poses)
+
+  def t3_extract_aruco_poses(self):
+        rospy.loginfo("extracting detected aruco marker poses ...")
+        tfs =  self.get_all_tfs()
+        marker_frames = [marker_frame for marker_frame in tfs if "fiducial_" in marker_frame]
+        rospy.loginfo('Detected markers %s', marker_frames)
+        for frame in marker_frames:
+            marker_id = int(frame.replace('fiducial_','',1))
+            marker_pose = self.get_marker_pose(marker_id)
+            if marker_id not in self.detected_markers:
+                self.detected_markers.append(marker_id)
+            self.marker_poses[marker_id] = marker_pose
+            rospy.sleep(0.2)
+
+  def t3_spawn_cover(self):
+      marker_pose_13 = self.marker_poses[13]
+      pose_x = marker_pose_13.transform.translation.x
+      pose_y = marker_pose_13.transform.translation.y
+      pose_z = marker_pose_13.transform.translation.z
+      print("spawning handle")
+      lid = self.spawn_box("lid", pose_x+0.007, pose_y-0.044, pose_z-0.0006, 0, 0, -18, 0.0996,0.1496, 0.004)
+      height = pose_z+0.013
+      lid_handle = self.spawn_box("lid_handle", pose_x+0.007, pose_y-0.044, height, 0, 0, -18, 0.035, 0.035, 0.035)
+
+  def t3_move_to_cover(self):
+    marker_pose_12 = self.marker_poses[12]
+    marker_pose_13 = self.marker_poses[13]
+    move_group = self.move_group
+
+    self.move_cartesian(0.05, -0.05, 0.1)
+    approach_pose = geometry_msgs.msg.Pose()
+    approach_pose.position.x = marker_pose_13.transform.translation.x + 0.007
+    approach_pose.position.y = marker_pose_13.transform.translation.y - 0.044
+    approach_pose.position.z = marker_pose_13.transform.translation.z + 0.16
+
+
+    quaternion = self.euler_to_quaternion(90,90,-18)
+    approach_pose.orientation.x = quaternion[0]
+    approach_pose.orientation.y = quaternion[1]
+    approach_pose.orientation.z = quaternion[2]
+    approach_pose.orientation.w = quaternion[3]
+
+
+    move_group.set_pose_target(approach_pose)
+    plan = move_group.go(wait=True)
+    move_group.stop()
+    move_group.clear_pose_targets()
+    current_pose = self.move_group.get_current_pose().pose
+    return all_close(approach_pose, current_pose, 0.01)
 
   def t3_grab_cover(self):
         rospy.loginfo("Objective 5 - part 2: grabbing inspection window cover in real and planning environment")
 
         rospy.loginfo("grabbing/attaching inspection window cover in real environment")
         self.gripper_pub.publish("semi_close")
+        rospy.sleep(2)
         rospy.loginfo("grabbing/attaching inspection window cover in planning environment")
         self.attach_box("lid")
         self.attach_box("lid_handle")
 
-  def t3_detect_inspection_panel(self):
-        rospy.loginfo("Objective 5 - part 1: scanning right panel to localize inspection panel")
+  def t3_go_to_joint_state(self):
+
+    move_group = self.move_group
+
+    self.move_cartesian(0, 0, 0.05)
+    rospy.sleep(2)
+    joint_goal = move_group.get_current_joint_values()
+    joint_goal[0] = 1.57
+    joint_goal[1] = -1.57
+    joint_goal[2] = -1.30
+    joint_goal[3] = 1.57
+    joint_goal[4] = -1.57
+    joint_goal[5] = 0
+
+    move_group.go(joint_goal, wait=True)
+
+    move_group.stop()
+
+    print("Current pose", move_group.get_current_pose().pose)
+    current_joints = move_group.get_current_joint_values()
+    return all_close(joint_goal, current_joints, 0.01)
+
+  def t3_scan_cover_storage(self):
+
+    move_group = self.move_group
     
-  def t3_placing_cover_on_table(self):
-        rospy.loginfo("Objective 5 - part 1: scanning right panel to localize inspection panel")
-   
+    self.move_group.allow_replanning(True)
+
+    planning_time = 0.5
+    self.move_group.set_planning_time(planning_time)
+    rospy.loginfo("Planning time set to %s", planning_time)
+
+    planner_1 = "RRTstarkConfigDefault"
+    planner_2 = "RRTkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    rospy.loginfo("Planner set to %s",planner_1)
+
+    plan_attempts = 5
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    rospy.loginfo("Planning attempts set to %s", plan_attempts)
+
+    rospy.loginfo("Starting to scan the panel ...")
+
+    self.go_to_pose_goal(-0.1, -0.3, 0.35, 0, 90,-45)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.go_to_pose_goal(-0.1, -0.3, 0.35, 0, 90,-90)
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(0.1, -0.1, 0)
+    #rospy.sleep(2)
+    #self.t3_extract_aruco_poses()
+    print(self.marker_poses)
+
+  def move_to_area(self): 
+    marker_pose_14 = self.marker_poses[14]
+    move_group = self.move_group
+
+    approach_pose = geometry_msgs.msg.Pose()
+    approach_pose.position.x = marker_pose_14.transform.translation.x - 0.1
+    approach_pose.position.y = marker_pose_14.transform.translation.y - 0.1
+    approach_pose.position.z = marker_pose_14.transform.translation.z + 0.165
+
+    quaternion = self.euler_to_quaternion(0,90,0)
+    approach_pose.orientation.x = quaternion[0]
+    approach_pose.orientation.y = quaternion[1]
+    approach_pose.orientation.z = quaternion[2]
+    approach_pose.orientation.w = quaternion[3]
+
+    move_group.set_pose_target(approach_pose)
+    plan = move_group.go(wait=True)
+    move_group.stop()
+    move_group.clear_pose_targets()
+    current_pose = self.move_group.get_current_pose().pose
+    return all_close(approach_pose, current_pose, 0.01)
+
+  def t3_detach_cover(self):
+        rospy.loginfo("detaching inspection window cover in real environment")
+        self.gripper_pub.publish("open")
+        rospy.sleep(2)
+        self.detach_box("lid")
+        self.detach_box("lid_handle")
+
+  def t3_detect_tag(self):
+    #rospy.loginfo("Objective 5 - part 1: scanning right panel to localize inspection panel")
+    scan_pose = [0.2,-0.15,0.15,90,0,0]   
+
+    self.move_group.allow_replanning(True)
+
+    planning_time = 0.5
+    self.move_group.set_planning_time(planning_time)
+    rospy.loginfo("Planning time set to %s", planning_time)
+
+    planner_1 = "RRTstarkConfigDefault"
+    planner_2 = "RRTkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    rospy.loginfo("Planner set to %s",planner_1)
+
+    plan_attempts = 5
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    rospy.loginfo("Planning attempts set to %s", plan_attempts)
+
+    rospy.loginfo("Starting to scan the tag ...")
+    self.go_to_pose_goal(0.18, -0.23, 0.35, scan_pose[3], scan_pose[4]+90, scan_pose[5]-18)
+    rospy.sleep(2)
+    #self.t3_extract_aruco_poses()
+    self.go_to_pose_goal(0.37, -0.23, 0.35, scan_pose[3], scan_pose[4]+100, scan_pose[5]-18)
+    rospy.sleep(2)
+    self.extract_button_id()
+    self.move_cartesian(0.08, -0.03, 0.03)
+    rospy.sleep(2)
+    self.extract_button_id()
+    self.move_cartesian(-0.02, -0.02, 0)
+    rospy.sleep(2)
+    self.extract_button_id()
+    self.move_cartesian(0.02, 0.02, 0)
+    rospy.sleep(2)
+    self.extract_button_id()
+    
+    print(self.marker_poses)
+
+  def extract_button_id(self):
+        rospy.loginfo("extracting detected aruco marker poses ...")
+        tfs =  self.get_all_tfs()
+        marker_frames = [marker_frame for marker_frame in tfs if "fiducial_" in marker_frame]
+        rospy.loginfo('Detected markers %s', marker_frames)
+        for frame in marker_frames:
+            marker_id = int(frame.replace('fiducial_','',1))
+            self.button_id = int(frame.replace('fiducial_','',1))
+            marker_pose = self.get_marker_pose(marker_id)
+            if marker_id not in self.detected_markers:
+                self.detected_markers.append(marker_id)
+            self.button[marker_id] = marker_pose
+            rospy.sleep(0.2)
+
+  def t3_move_back_to_cover(self):
+    marker_pose_12 = self.marker_poses[12]
+    marker_pose_13 = self.marker_poses[13]
+    move_group = self.move_group
+
+    self.move_cartesian(0, 0, 0.3)
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.15, -0.3, 0.35, 90, 90, 0)
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.15, -0.3, 0.35, 90, 90, -18)
+    rospy.sleep(2)
+    approach_pose = geometry_msgs.msg.Pose()
+    approach_pose.position.x = marker_pose_13.transform.translation.x + 0.007
+    approach_pose.position.y = marker_pose_13.transform.translation.y - 0.044
+    approach_pose.position.z = marker_pose_13.transform.translation.z + 0.27
+
+
+    quaternion = self.euler_to_quaternion(90,90,-18)
+    approach_pose.orientation.x = quaternion[0]
+    approach_pose.orientation.y = quaternion[1]
+    approach_pose.orientation.z = quaternion[2]
+    approach_pose.orientation.w = quaternion[3]
+
+
+    move_group.set_pose_target(approach_pose)
+    plan = move_group.go(wait=True)
+    move_group.stop()
+    move_group.clear_pose_targets()
+    self.move_cartesian(0, 0, -0.09)
+    current_pose = self.move_group.get_current_pose().pose
+    return all_close(approach_pose, current_pose, 0.01)
+
+  def t3_scan_middle_panel(self):
+    rospy.loginfo("Objective 1: Scanning the middle panel to localize components/buttons")
+    scan_pose = [-0.14,0,0.4,90,0,0]   #  [0.0153/2+0.020/2,0.075/2-0.02-0.020/2,0.2,0,90,0]
+
+    self.move_group.allow_replanning(True)
+
+    planning_time = 0.5
+    self.move_group.set_planning_time(planning_time)
+    rospy.loginfo("Planning time set to %s", planning_time)
+
+    planner_1 = "RRTstarkConfigDefault"
+    planner_2 = "RRTkConfigDefault"
+    self.move_group.set_planner_id(planner_1)
+    rospy.loginfo("Planner set to %s",planner_1)
+
+    plan_attempts = 5
+    self.move_group.set_num_planning_attempts(plan_attempts)
+    rospy.loginfo("Planning attempts set to %s", plan_attempts)
+
+    rospy.loginfo("Starting to scan the panel ...")
+
+    #self.go_to_pose_goal(scan_pose[0], scan_pose[1], scan_pose[2], scan_pose[3], scan_pose[4], scan_pose[5])
+    #rospy.sleep(2)
+
+    #self.t3_extract_aruco_poses()
+    self.go_to_joint_state(self.start_state)
+    rospy.sleep(2)
+    self.go_to_pose_goal(0.22, 0.01,0.38, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+
+    self.move_cartesian(0, -.02, 0)
+    #self.go_to_pose_goal(0.22, -0.01,0.38, scan_pose[3], scan_pose[4], scan_pose[5])
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+
+    self.move_cartesian(0, 0.02, -0.08)
+
+
+    #self.go_to_pose_goal(0.22, 0.01, 0.30, scan_pose[3], scan_pose[4], scan_pose[5])
+
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(0, -0.02, 0)
+
+    #self.go_to_pose_goal(0.22, -0.01, 0.30, scan_pose[3], scCPUsan_pose[4], scan_pose[5])
+
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(0, 0.02, -0.08)
+
+    #self.go_to_pose_goal(0.22, 0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
+
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+    self.move_cartesian(0, -0.02, 0)
+
+    #self.go_to_pose_goal(0.22, -0.01, 0.22, scan_pose[3], scan_pose[4], scan_pose[5])
+
+    rospy.sleep(2)
+    self.t3_extract_aruco_poses()
+
+  def t3_push_button(self):
+
+        rospy.loginfo("pressing button %s", 5)
+        move_group = self.move_group
+        marker_pose = self.marker_poses[5]
+        #marker_pose = self.button[self.button_id] 
+
+
+        approach_pose = geometry_msgs.msg.Pose()
+        approach_pose.position.x = marker_pose.transform.translation.x - 0.200
+        approach_pose.position.y = marker_pose.transform.translation.y 
+        print("Y GOAL", approach_pose.position.y )
+        approach_pose.position.z = marker_pose.transform.translation.z -0.05500 #- 0.01
+
+        self.gripper_pub.publish("close")
+        rospy.sleep(2)
+        current_pose = self.move_group.get_current_pose().pose
+        dx = approach_pose.position.x - current_pose.position.x 
+        dy = approach_pose.position.y - current_pose.position.y 
+        dz = approach_pose.position.z - current_pose.position.z 
+
+        self.move_cartesian(dx, dy, dz)
+        rospy.sleep(0.5)
+        self.move_cartesian(0.06, 0, 0)
+        rospy.sleep(0.5)
+        self.move_cartesian(-0.06, 0, 0)
+        rospy.sleep(0.5)
+        self.gripper_pub.publish("open")
+        rospy.sleep(2)
+
+
+
 # Motion related functions
   def go_to_pose_goal(self,x,y,z,r,p,yw): 
     """ move arm to specified position wrt base link """
