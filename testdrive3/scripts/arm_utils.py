@@ -399,16 +399,16 @@ class arm(object):
 
 
         #simulation
-        self.move_cartesian(0.06, 0, 0)
-        rospy.sleep(0.5)
-        self.move_cartesian(-0.06, 0, 0)
-        rospy.sleep(0.5)
+        #self.move_cartesian(0.06, 0, 0)
+        #rospy.sleep(0.5)
+        #self.move_cartesian(-0.06, 0, 0)
+        #rospy.sleep(0.5)
 
         #test drive
-        # self.move_cartesian(0.09, 0, 0)
-        # rospy.sleep(0.5)
-        # self.move_cartesian(-0.09, 0, 0)
-        # rospy.sleep(0.5)
+        self.move_cartesian(0.09, 0, 0)
+        rospy.sleep(0.5)
+        self.move_cartesian(-0.09, 0, 0)
+        rospy.sleep(0.5)
 
 
 
@@ -456,9 +456,9 @@ class arm(object):
 # TASK 2 specific functions
   def t2_spawn_imu(self):
       #simulation
-      dx, dy, dz = 0.05, 0.165, 0.05
-      #test drive
-      #dx, dy, dz = 0.045, 0.165, 0.05
+      #dx, dy, dz = 0.05, 0.165, 0.05
+      test drive
+      dx, dy, dz = 0.045, 0.165, 0.05
 
       imu_marker_pose = self.marker_poses[10]
     
