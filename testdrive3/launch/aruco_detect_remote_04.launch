@@ -1,7 +1,7 @@
 <!-- Run the aruco_detect node -->
 <launch>
   <!-- namespace for camera input -->
-  <arg name="camera" default="camera_image/color"/>
+  <arg name="camera" default="usb_cam/color"/>
   <arg name="image" default="image_raw"/>
   <arg name="transport" default="raw"/>
   <arg name="fiducial_len" default="0.04"/> <!-- it sets the appropriate distance -->
