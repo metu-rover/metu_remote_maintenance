@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find testdrive3)/launch/aruco_detect_remote_05.launch"/>
+   <node pkg="testdrive3" name="objective1" type="objective1.py" output="screen" cwd="node"/> 
+</launch>
